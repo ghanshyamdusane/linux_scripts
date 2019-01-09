@@ -1,0 +1,12 @@
+Distributor:/ESDS_Backup/Daily_Full_BKP # cat /ESDS_Backup/BKP_Script/Daily_BKP.sh
+
+#Bakup in zip format :
+
+mysqldump -uroot -pSeema@2013# camlsales_pi | gzip > /ESDS_Backup/Daily_Full_BKP/$(date +%F)_FULL_camlsales_pi.sql.gz
+
+#To delete files older than 1 week:
+
+find /ESDS_Backup/Daily_Full_BKP/ -type f -mtime +15 -exec rm  -f {} \;
+
+Distributor:/ESDS_Backup/Daily_Full_BKP #
+
