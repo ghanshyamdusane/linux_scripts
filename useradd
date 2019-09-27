@@ -1,0 +1,23 @@
+#!/bin/bash
+#Author & Managed by Ghanshyam Dusane
+echo "deepanshuK-A Newuser123
+Grao-A Newuser123
+SurabhiJ-A Newuser123
+RiyankaP-A Newuser123
+AditiP-A Newuser123
+NikhilJ-A Newuser123
+SiddharthK-A Newuser123
+KashifS-A Newuser123
+AbdulK-A Newuser123
+PavanG-A Newuser123
+GhanshyamD-A Newuser123
+PramodK-A Newuser123" > userlist.txt
+while read u1 p1
+do
+   echo Username: $u1 Password: $p1 created
+   adduser  $u1
+   echo $p1 | passwd --stdin "$u1"
+   echo Username: $u1 Password: $p1 created
+   usermod -aG wheel $u1
+   echo $u1 has been added to sudoers list
+done < userlist.txt
