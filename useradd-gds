@@ -1,1 +1,14 @@
-hi
+#!/bin/bash
+#Author & Managed by Ghanshyam Dusane
+echo "falkera-a Newuser12345
+heutlib-a Newuser12345
+samalta Newuser12345" > userlist.txt
+while read u1 p1
+do
+   echo Username: $u1 Password: $p1 created
+   adduser  $u1
+   echo $p1 | passwd --stdin "$u1"
+   echo Username: $u1 Password: $p1 created
+   usermod -aG wheel $u1
+   echo $u1 has been added to sudoers list
+done < userlist.txt
