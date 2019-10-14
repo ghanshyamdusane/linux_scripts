@@ -1,0 +1,185 @@
+#!/bin/bash
+#Author and Maintained by : Ghanshyam Dusane
+#Variables
+
+DBHOST=""
+DBUSERNAME=""
+DBPASSWORD=""
+dat=`date --date='+5 hour 30 minutes' '+%Y-%m-%d'`
+
+ENV=""
+
+SENDGRIDAPIUSER=""
+SENDGRIDAPIPASSWORD=""
+EMAIL_TO=""
+#EMAIL_TO=""
+FROM_EMAIL="$ENV-cbm-pipeline-monitoring@otis.com"
+FROM_NAME="$ENV-CBM-Pipeline-Monitoring"
+
+touch /tmp/queryop
+#Enter the Pipeline Number which you want to monitor
+echo "<>" > piplinelist.txt
+
+#Enter the Pipeline number where you want to receive a alert only once in a day if failed
+echo "<>" > cbpiplinelist.txt
+
+while read u1
+do
+#------------------------------------------------------------------------#
+runbookid="$u1"
+echo $runbookid
+touch /tmp/longrunning-$runbookid
+mysql -h $DBHOST -u $DBUSERNAME -p$DBPASSWORD -e "use scheduler; select * from runbook_instance where startedat LIKE '$dat%' and runbookid LIKE '$runbookid' ORDER BY status DESC LIMIT 1;" > /tmp/queryop
+query=`cat /tmp/queryop | grep FAILED | wc -l`
+
+if [ "$query" -gt 0 ] ;then
+
+        echo "sending mail"
+        instanceid=`cat /tmp/queryop | grep : | awk '{print $1}'`
+        runbookid=`cat /tmp/queryop | grep : | awk '{print $2}'`
+        startedat=`cat /tmp/queryop | grep : | awk '{print $3 " " $4}'`
+        startdate=`cat /tmp/queryop | grep : | awk '{print $3 "-" $4}'`
+        status="FAILED"
+        SUBJECT="$startdate-$ENV-DataPipeline-Failed-$runbookid";
+        mysql -h $DBHOST -u $DBUSERNAME -p$DBPASSWORD -e "use scheduler; select * from runbook_instance_details where runbook_instance_id=$instanceid;" > /tmp/queryrunbookid
+        stepname=`cat /tmp/queryrunbookid | grep FAILED | awk '{print $11}' | head -1`
+
+        curl https://api.sendgrid.com/api/mail.send.json \
+        -F to=$EMAIL_TO -F subject=$SUBJECT \
+        -F text="PipelineReporting" --form-string html="<head>
+<style>
+table, th, td {
+  border: 2px solid black;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 5px;
+}
+th {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: bold;
+}
+td {
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h2>$ENV : Data Pipeline $runbookid failed</h2><table border="1"><tr bgcolor="skyblue"><th>instanceid</th><th>runbookid</th><th>startedat</th><th>status</th></tr><tr><td>$instanceid</td><td>$runbookid</td><td>$startedat</td><td>$status</td></tr></table><h5> Note : Data Pipeline <u> $runbookid </u> started failing from following flow : <u> $stepname </u><h5>
+</body>" \
+        -F from=$FROM_EMAIL -F api_user=$SENDGRIDAPIUSER -F api_key=$SENDGRIDAPIPASSWORD
+else
+echo "Everyting is okay"
+fi
+
+CURRENTTIME=`date --date='+5 hour 30 minutes' '+%R' | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'`
+PIPERUNNINGSTATE=`cat /tmp/queryop | grep RUNNING | wc -l`
+if [ "$PIPERUNNINGSTATE" -gt 0 ];then
+                PIPESTARTTIME=`cat /tmp/queryop | grep RUNNING | awk '{print $4}' | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'`
+        RUNNINGTIME=$(($CURRENTTIME - $PIPESTARTTIME))
+        echo Running time of pipline $runbookid is $RUNNINGTIME seconds.
+                longrunsentcheck=`cat /tmp/longrunning-$runbookid | grep mail | wc -l`
+
+        if [ "$RUNNINGTIME" -ge 7200 ] && [ "$longrunsentcheck" -eq 0 ] ;then
+                echo "Sending mail for long running pipeline" > /tmp/longrunning-$runbookid
+                                instanceid=`cat /tmp/queryop | grep : | awk '{print $1}'`
+                                runbookid=`cat /tmp/queryop | grep : | awk '{print $2}'`
+                                startedat=`cat /tmp/queryop | grep : | awk '{print $3 " " $4}'`
+                                startdate=`cat /tmp/queryop | grep : | awk '{print $3 "-" $4}'`
+                                status="RUNNING"
+                                SUBJECT="$startdate-$ENV-DataPipeline-RUNNING-$runbookid";
+                                curl https://api.sendgrid.com/api/mail.send.json \
+        -F to=$EMAIL_TO -F subject=$SUBJECT \
+        -F text="PipelineReporting" --form-string html="<head>
+<style>
+table, th, td {
+  border: 2px solid black;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 5px;
+}
+th {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: bold;
+}
+td {
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h2>$ENV : Data Pipeline $runbookid is in running state from 2 hours</h2><table border="1"><tr bgcolor="orange"><th>instanceid</th><th>runbookid</th><th>startedat</th><th>status</th></tr><tr><td>$instanceid</td><td>$runbookid</td><td>$startedat</td><td>$status</td></tr></table>
+</body>" \
+        -F from=$FROM_EMAIL -F api_user=$SENDGRIDAPIUSER -F api_key=$SENDGRIDAPIPASSWORD
+        fi
+fi
+curtim=`date --date='+5 hour 30 minutes' '+%R'`
+tim="12:10"
+if [ "$curtim" == "$tim" ] ;then
+echo > /tmp/longrunning-$runbookid
+fi
+#------------------------------------------------------------------------#
+done < piplinelist.txt
+
+while read u1
+do
+#------------------------------------------------------------------------#
+#For Callback Only
+runbookid="$u1"
+echo $runbookid
+touch /tmp/queryop-$runbookid
+mysql -h $DBHOST -u $DBUSERNAME -p$DBPASSWORD -e "use scheduler; select * from runbook_instance where startedat LIKE '$dat%' and runbookid LIKE '$runbookid' ORDER BY status DESC LIMIT 1;" > /tmp/queryop
+query=`cat /tmp/queryop | grep FAILED | wc -l`
+sentcheck=`cat /tmp/queryop-$runbookid | grep mail | wc -l`
+
+if [ "$query" -gt 0 ] && [ "$sentcheck" -eq 0 ] ;then
+
+        echo "sending mail" > /tmp/queryop-$runbookid
+        instanceid=`cat /tmp/queryop | grep : | awk '{print $1}'`
+        runbookid=`cat /tmp/queryop | grep : | awk '{print $2}'`
+        startedat=`cat /tmp/queryop | grep : | awk '{print $3 " " $4}'`
+        startdate=`cat /tmp/queryop | grep : | awk '{print $3 "-" $4}'`
+        status="FAILED"
+        SUBJECT="$startdate-$ENV-DataPipeline-Failed-$runbookid";
+        mysql -h $DBHOST -u $DBUSERNAME -p$DBPASSWORD -e "use scheduler; select * from runbook_instance_details where runbook_instance_id=$instanceid;" > /tmp/queryrunbookid
+        stepname=`cat /tmp/queryrunbookid | grep FAILED | awk '{print $11}' | head -1`
+
+        curl https://api.sendgrid.com/api/mail.send.json \
+        -F to=$EMAIL_TO -F subject=$SUBJECT \
+        -F text="PipelineReporting" --form-string html="<head>
+<style>
+table, th, td {
+  border: 2px solid black;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 5px;
+}
+th {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: bold;
+}
+td {
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h2>$ENV : Data Pipeline $runbookid failed</h2><table border="1"><tr bgcolor="skyblue"><th>instanceid</th><th>runbookid</th><th>startedat</th><th>status</th></tr><tr><td>$instanceid</td><td>$runbookid</td><td>$startedat</td><td>$status</td></tr></table><h5> Note : Data Pipeline <u> $runbookid </u> started failing from following flow : <u> $stepname </u><h5>
+</body>" \
+        -F from=$FROM_EMAIL -F api_user=$SENDGRIDAPIUSER -F api_key=$SENDGRIDAPIPASSWORD
+else
+echo "Everyting is okay"
+fi
+
+curtim=`date --date='+5 hour 30 minutes' '+%R'`
+tim="12:10"
+if [ "$curtim" == "$tim" ] ;then
+echo > /tmp/queryop-$runbookid
+fi
+#------------------------------------------------------------------------#
+done < cbpiplinelist.txt
