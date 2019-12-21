@@ -2,7 +2,7 @@
 
     EMAIL="dusanegs@gmail.com"
 
-    EMAIL1="ghanshyam.dusane@capgemini.com"
+    EMAIL1="ghanshyam.dusane@yourdomain.com"
 
     SUBJECT="Alert $(hostname) Disk Space & Memory Status"
 
