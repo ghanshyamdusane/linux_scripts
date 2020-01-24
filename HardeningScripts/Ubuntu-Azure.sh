@@ -103,6 +103,6 @@ fi
                 sed -i "s/false/true/" /etc/default/sysstat
                 service sysstat restart
         echo "Creating Linux Admins Users"
-        useradd -m -c "Ghansham Dusane Linux Admin | $(date +%m-%d-%Y)" -s /bin/bash mahajag-a
+        useradd -m -c "Ghanshyam Dusane Linux Admin | $(date +%m-%d-%Y)" -s /bin/bash dusangh-a
         usermod -aG sudo dusangh-a
         #timedatectl set-timezone America/New_York
