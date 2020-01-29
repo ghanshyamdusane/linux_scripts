@@ -1,0 +1,3 @@
+vi .bashrc
+crontab () { [[ $@ =~ -[iel]*r ]] && echo '"r" not allowed' || command crontab "$@" ;}
+restart the session
