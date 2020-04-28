@@ -1,0 +1,27 @@
+#!/bin/bash
+#Author & Maintained by : Ghanshyam Dusane
+#Description : To monitor the message Queue for the db_inserter and clear cache
+
+while true
+do
+QUEUE=`journalctl -u db_inserter.service -n 100 | grep Queue | awk '{print $15}' | tail -1`
+echo "Current Queue size is : $QUEUE"
+if [[ $QUEUE -ge 200 ]] ; then
+echo "DB Inserter Queue size is : $QUEUE , restarting the db_inserter service"
+systemctl restart db_inserter
+else
+echo "DB Inserter Queue size is : $QUEUE" >> /var/log/mywerk-monitoring.log
+fi
+ramusage=$(free | awk '/Mem/{printf("RAM Usage: %.2f\n"), $3/$2*100}'| awk '{print $3}'| cut -d "." -f1 )
+buffcache=$(free -g | grep Mem | awk '{print $6}')
+if [[ $ramusage -ge 80 ]] ; then
+echo 1 > /proc/sys/vm/drop_caches
+echo "Memory used% is $ramusage , clearing page cache"
+elif [ $buffcache -ge 10 ];then
+echo 1 > /proc/sys/vm/drop_caches
+echo "Buff/cache used is $buffcache , clearing page cache"
+else
+echo "Memory Usage % is : $ramusage and Buff/cache is $buffcache"
+fi
+sleep 20
+done
