@@ -1,0 +1,15 @@
+[Unit]
+Description=MyWERK Monitoring service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+StartLimitInterval = 0
+User=root
+WorkingDirectory=/root
+ExecStart=/root/mywerk-monitoring
+
+[Install]
+WantedBy=multi-user.target
