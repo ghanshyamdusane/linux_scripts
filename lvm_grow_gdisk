@@ -1,0 +1,57 @@
+Hello Ghanshyam,
+Hope you’re doing well.
+ 
+Apologies for the delay, I was not feeling well and I was out of office.
+ 
+As agreed, I will then proceed with archiving this service request as discussed, however, if any further help is needed or in case you have any further inquiries regarding this case, please do let me know.
+You may receive an invitation from Microsoft to complete a brief web survey. Your feedback is very important to us. We use it to continually improve our service. We would appreciate it if you can take the time to complete this survey.
+In addition, if you would like to discuss any feedback you can contact me or my manager using the contact information in my signature.
+ 
+Please find a summary on the actions took during the remote session on Monday as discussed:
+ 
+
+We had 2 VMs that you needed to extend the / and /opt partitions.We had the disks size increased as appropriate via the Azure Portal.We have created the new partitions in /dev/sda using gdisk and added the new partitions as PVs.
+We used the option “e” (gdisk) in the expert menu to realign the last usable sector on the disk after resizing.We have extended the VG and LVs accordingly.We have resized the filesystem (xfs) to be aligned with the new changes in the disk space.
+ 
+As for the non-LVM RHEL 7.7 marketplace image we discussed, it seems that it’s been removed from the portal,
+however, you can have the VM created via CLI within the cloudshell in the portal. Please see the documentation and example below:
+ 
+https://docs.microsoft.com/en-us/cli/azure/vm?view=azure-cli-latest
+https://docs.microsoft.com/en-us/cli/azure/vm?view=azure-cli-latest#az-vm-create
+ 
+Example:
+========
+ 
+### Use the below command to find out the available Red Hat images ###
+az vm image list --publisher redhat --offer RHEL --all -o table
+ 
+ 
+### Create the necessary variables ###
+location="westeurope"
+rgname="GenericRG"
+vmname="RHEL-non-LVM"
+vnet="RHEL-non-LVM2VNet"
+subnet="RHEL-non-LVMSubnet"
+nic="RHEL-non-LVMNIC2"
+size="Standard_B2ms"
+pip="RHEL-non-LVMPIP"
+nsg="RHEL-non-LVMNSG"
+adminUser="vmadmin"
+adminPassword="myPa$$w0rd123!!
+imageName="RedHat:RHEL:7-RAW:7.7.2019090418"
+ 
+ 
+### Create the resources ###
+az group create --name $rgname --location $location
+az network vnet create -g $rgname --name $vnet --subnet-name $subnet
+az network public-ip create -g $rgname --name $pip --allocation-method static
+az network nsg create -g $rgname --name $nsg
+az network nsg rule create -g $rgname --nsg-name $nsg --name "ssh" --priority 101 --protocol Tcp --access Allow --direction Inbound --destination-port-ranges 22
+az network nsg rule create -g $rgname --nsg-name $nsg --name "RDP" --priority 102 --protocol Tcp --access Allow --direction Inbound --destination-port-ranges 3389
+az network nic create -g $rgname --name $nic --subnet $subnet --vnet-name $vnet --network-security-group $nsg --public-ip-address $pip
+ 
+ 
+### Create the VM ###
+az vm create -g $rgname -n $vmname --size $size --image $imageName --authentication-type password --admin-password $adminPassword --admin-username $adminUser --nics $nic --storage-sku "Standard_LRS"
+ 
+It’s been a pleasure Ghanshyam.
