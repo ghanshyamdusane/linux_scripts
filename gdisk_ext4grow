@@ -1,0 +1,71 @@
+Expanding a Linux Data Partition
+This procedure describes how to expand a data partition using the Offline Resize method. You must unmount the filesystem until the resizing is complete.
+
+If you want to resize a boot partition or an LVM volume, Expanding a Root Partition or Expanding an LVM Data or Root Volume.
+
+Unmount the file system. For example, if the target device is "sdb1", you would enter:
+
+# umount /dev/mapper/clear_sdb1
+
+Detach the disk you want to expand using the command hcl detach diskname, where diskname is the short form of the disk name. For example, you would use sdb1 instead of /dev/sdb1.
+
+# hcl detach sdb1
+
+If the data partition is a non-GPT partition, extend the root partition using the fdisk or partx command.
+
+Warning:	This is very critical operation. Make sure you do not change the starting offset of the partition while you are manipulating the partition table.
+# fdisk /dev/sdb
+
+If the data partition is a GPT partition, do the following:
+
+Access the device using gdisk.
+
+# gdisk /dev/sdb
+
+Print all the information about the old partition using the i partition-number command and note the "Partition unique GUID".
+
+Command (? for help): i 1
+Using 1
+Partition GUID code: EBD0A0A2-B9E5-4433-87C0-68B6B72699C7 (Microsoft basic data)
+Partition unique GUID: 1390EA67-17AB-48F9-9851-8C8D54A9E454
+First sector: 2048 (at 1024.0 KiB)
+Last sector: 585727 (at 286.0 MiB)
+Partition size: 583680 sectors (285.0 MiB)
+Attribute flags: 0000000000000000
+Partition name: '1'
+Delete the old partition.
+
+Command (? for help): d 1
+
+Re-create the new partition with same start but different size when prompted.
+
+Command (? for help): n 1
+
+Switch to expert mode.
+
+Command (? for help): x
+
+Set the saved GUID for the partition.
+
+Expert command (? for help): c 1
+Using 1
+Enter the partition's new unique GUID ('R' to randomize): 1390EA67-17AB-48F9-9851-8C8D54A9E454 
+Save the changes to disk.
+
+Expert command (? for help): w
+
+Run the partprobe command to reread the partition table.
+
+# partprobe /dev/sdb
+
+Reattach the disk using the command hcl attach diskname, where diskname is the short form of the disk name.
+
+# hcl attach sdb1
+
+Check the files with the e2fsck command and then expand the filesystem using the resize2fs clear_path command where clear_path is the clear text path to the disk. The default path is /dev/mapper/clear_diskname.
+
+# e2fsck -f /dev/mapper/clear_sdb1
+# resize2fs /dev/mapper/clear_sdb1
+Remount the filesystem.
+
+# mount /dev/mapper/clear_sdb1
