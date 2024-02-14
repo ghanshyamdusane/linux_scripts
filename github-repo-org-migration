@@ -1,0 +1,25 @@
+#!/bin/bash
+#Maintained By: Ghanshyam Dusane
+
+#Variables
+PAT_TOKEN=
+SOURCE_REPO=
+TARGET_REPO=
+GIT_ORG=
+
+#Commands
+echo "Cloning the repo..."
+git clone "https://$GIT_ORG:$PAT_TOKEN@github.com/$GIT_ORG/$SOURCE_REPO.git" --bare
+cd "$SOURCE_REPO.git"
+echo "fetch lfs from source repo..."
+git lfs ls-files
+git lfs fetch --all
+echo "Push to new repo on github..."
+git push --mirror "https://$GIT_ORG:$PAT_TOKEN@github.com/$GIT_ORG/$TARGET_REPO.git"
+echo "Push lfs files..."
+git lfs push --all "https://$GIT_ORG:$PAT_TOKEN@github.com/$GIT_ORG/$TARGET_REPO.git"
+git remote rm origin
+git remote add origin "https://$GIT_ORG:$PAT_TOKEN@github.com/$GIT_ORG/$TARGET_REPO.git"
+echo "Push all origins to target repo..."
+git push origin --all --force
+echo "Migration is completed...!!!"
